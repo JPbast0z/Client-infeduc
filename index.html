@@ -19,13 +19,13 @@
             align-items: center;
             padding: 20px;
             color: white;
+            overflow: hidden;
         }
         .container {
             width: 100%;
             max-width: 1400px;
         }
         
-        /* ... (Estilos da tela de seleção - sem alterações) ... */
         .selection-screen {
             text-align: center;
             padding: 40px 20px;
@@ -68,7 +68,6 @@
             display: block;
         }
         
-        /* ... (Estilos da tela de TV - sem alterações) ... */
         .tv-screen {
             display: none;
             text-align: center;
@@ -111,7 +110,6 @@
             margin-right: 15px;
         }
         
-        /* ... (Estilos da tela de celular - sem alterações) ... */
         .phone-screen {
             display: none;
             text-align: center;
@@ -174,7 +172,6 @@
             transform: none;
         }
         
-        /* Tela de vídeo */
         .video-screen {
             display: none;
         }
@@ -191,8 +188,7 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
-            /* Transição suave ao mudar o filtro */
-            transition: filter 0.3s ease; 
+            transition: filter 0.3s ease, transform 0.3s ease; 
         }
         .video-controls {
             position: fixed;
@@ -229,7 +225,6 @@
             background: rgba(244, 67, 54, 1);
         }
         
-        /* Botão voltar */
         .back-btn {
             position: fixed;
             top: 40px;
@@ -270,7 +265,7 @@
             cursor: pointer;
             transition: all 0.3s;
             font-weight: 600;
-            min-width: 180px; /* Largura mínima */
+            min-width: 180px; 
             text-align: center;
         }
         .filter-btn:hover {
@@ -417,7 +412,9 @@
                     <button class="filter-btn" onclick="applyFilter('grayscale(100%)')">Preto e Branco</button>
                     <button class="filter-btn" onclick="applyFilter('contrast(200%)')">Contraste Alto</button>
                     <button class="filter-btn" onclick="applyFilter('invert(100%)')">Inverter Cores</button>
+                    <button class="filter-btn" onclick="rotateVideo()">Girar 90° 🔄</button>
                 </div>
+                
                 <div class="video-controls" id="videoControls">
                     <button class="control-btn" id="startCameraBtn" onclick="startCamera()" title="Iniciar Câmera">
                         📷
@@ -441,8 +438,10 @@
         let peerConnection;
         let localStream = null;
         let remotePeerId;
-        let currentMode = null; // 'tv' ou 'phone'
+        let currentMode = null; 
         let currentPin = null;
+
+        let currentRotation = 0; 
 
         const iceServers = {
             iceServers: [
@@ -483,7 +482,6 @@
                     document.getElementById('tvStatusIcon').textContent = '✅';
                     document.getElementById('tvStatus').textContent = 'Celular conectado!';
                 } else if (currentMode === 'phone') {
-                    // Ir direto para tela de vídeo no celular
                     document.getElementById('phoneScreen').style.display = 'none';
                     document.getElementById('videoScreen').style.display = 'block';
                     document.getElementById('videoControls').style.display = 'flex';
@@ -569,7 +567,6 @@
             socket.emit('join-room', pin);
         }
 
-        // Inicializar WebRTC
         async function initWebRTC(isOfferer) {
             peerConnection = new RTCPeerConnection(iceServers);
 
@@ -587,18 +584,13 @@
                     document.getElementById('remoteVideo').srcObject = remoteStream;
                     
                     applyFilter('none');
+                    currentRotation = 0;
+                    remoteVideoEl.style.transform = 'rotate(0deg) scale(1)'; // Reset
                 }
             };
-            // ==================================
             
             peerConnection.onconnectionstatechange = () => {
                 console.log('Connection state:', peerConnection.connectionState);
-                
-                if (peerConnection.connectionState === 'connected' && currentMode === 'phone' && !localStream) {
-                    setTimeout(() => {
-                        startCamera();
-                    }, 500);
-                }
             };
 
             peerConnection.onicecandidate = (event) => {
@@ -626,7 +618,7 @@
                     video: { 
                         width: { ideal: 1920 },
                         height: { ideal: 1080 },
-                        facingMode: 'environment' // Câmera traseira no celular
+                        facingMode: 'environment' 
                     },
                     audio: false
                 });
@@ -699,7 +691,9 @@
             
             if (remoteVideoEl) {
                 remoteVideoEl.style.filter = 'none';
+                remoteVideoEl.style.transform = 'rotate(0deg) scale(1)'; // Reseta
             }
+            currentRotation = 0; 
             
             document.getElementById('phoneCodeInput').value = '';
             document.getElementById('connectBtn').disabled = false;
@@ -742,6 +736,33 @@
                     btn.classList.remove('active');
                 }
             });
+        }
+
+        // *** FUNÇÃO DE ROTAÇÃO MODIFICADA ***
+        function rotateVideo() {
+            currentRotation = (currentRotation + 90) % 360; 
+            
+            let scale = 1.0; // Escala padrão
+
+            // Se a rotação for "de lado" (90 ou 270)
+            if (currentRotation % 180 !== 0) {
+                // Precisamos escalar o vídeo para preencher a tela.
+                // A escala deve ser a proporção da tela (o maior lado / menor lado)
+                const viewportAspect = window.innerWidth / window.innerHeight;
+                
+                if (viewportAspect > 1) {
+                    // 1. Tela está "deitada" (ex: 1920/1080 = 1.77)
+                    scale = viewportAspect;
+                } else {
+                    // 2. Tela está "em pé" (ex: 1080/1920 = 0.56)
+                    scale = 1 / viewportAspect; // Invertemos para ter o número > 1 (1 / 0.56 = 1.77)
+                }
+            }
+            
+            if (remoteVideoEl) {
+                // Aplica a rotação E a escala
+                remoteVideoEl.style.transform = `rotate(${currentRotation}deg) scale(${scale})`;
+            }
         }
     </script>
 </body>
