@@ -25,7 +25,7 @@
             max-width: 1400px;
         }
         
-        /* Tela de seleção inicial */
+        /* ... (Estilos da tela de seleção - sem alterações) ... */
         .selection-screen {
             text-align: center;
             padding: 40px 20px;
@@ -68,7 +68,7 @@
             display: block;
         }
         
-        /* Tela de TV - Mostrar código */
+        /* ... (Estilos da tela de TV - sem alterações) ... */
         .tv-screen {
             display: none;
             text-align: center;
@@ -111,7 +111,7 @@
             margin-right: 15px;
         }
         
-        /* Tela de celular - Input de código */
+        /* ... (Estilos da tela de celular - sem alterações) ... */
         .phone-screen {
             display: none;
             text-align: center;
@@ -191,6 +191,8 @@
             width: 100%;
             height: 100%;
             object-fit: contain;
+            /* Transição suave ao mudar o filtro */
+            transition: filter 0.3s ease; 
         }
         .video-controls {
             position: fixed;
@@ -247,8 +249,38 @@
             background: rgba(255,255,255,0.3);
             transform: translateX(-5px);
         }
-        
-        /* Loader */
+
+        .filter-controls {
+            position: fixed;
+            top: 40px; 
+            right: 40px;
+            z-index: 100;
+            display: flex;
+            flex-direction: column; 
+            gap: 15px;
+            display: none; 
+        }
+        .filter-btn {
+            background: rgba(0,0,0,0.7);
+            border: 2px solid white;
+            border-radius: 15px;
+            padding: 15px 25px;
+            font-size: 1.5rem;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+            min-width: 180px; /* Largura mínima */
+            text-align: center;
+        }
+        .filter-btn:hover {
+            background: rgba(255,255,255,0.2);
+            transform: scale(1.05);
+        }
+        .filter-btn.active { 
+            background: #667eea;
+            border-color: #667eea;
+        }
         .loader {
             display: inline-block;
             width: 60px;
@@ -263,7 +295,6 @@
             to { transform: rotate(360deg); }
         }
         
-        /* Mensagens */
         .message {
             background: rgba(255,255,255,0.1);
             padding: 30px;
@@ -277,7 +308,6 @@
             display: none !important;
         }
         
-        /* Responsivo para mobile */
         @media (max-width: 768px) {
             .selection-screen h1 {
                 font-size: 2.5rem;
@@ -312,12 +342,22 @@
                 height: 80px;
                 font-size: 2.5rem;
             }
+
+            .filter-controls {
+                top: 20px;
+                right: 20px;
+                gap: 10px;
+            }
+            .filter-btn {
+                padding: 10px 15px;
+                font-size: 1.2rem;
+                min-width: 120px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- Tela de Seleção Inicial -->
         <div class="selection-screen" id="selectionScreen">
             <h1>🔍 Lupa Digital</h1>
             <div class="device-buttons">
@@ -332,7 +372,6 @@
             </div>
         </div>
 
-        <!-- Tela da TV -->
         <div class="tv-screen" id="tvScreen">
             <button class="back-btn" onclick="goBack()">← Voltar</button>
             <h2>📺 Modo Monitor</h2>
@@ -346,7 +385,6 @@
             </div>
         </div>
 
-        <!-- Tela do Celular -->
         <div class="phone-screen" id="phoneScreen">
             <button class="back-btn" onclick="goBack()">← Voltar</button>
             <h2>📱 Modo Celular</h2>
@@ -369,12 +407,17 @@
             </div>
         </div>
 
-        <!-- Tela de Vídeo -->
         <div class="video-screen" id="videoScreen">
             <div class="video-container">
                 <video id="remoteVideo" autoplay playsinline></video>
                 <video id="localVideo" autoplay playsinline muted style="display: none;"></video>
                 
+                <div class="filter-controls" id="filterControls">
+                    <button class="filter-btn" onclick="applyFilter('none')">Normal</button>
+                    <button class="filter-btn" onclick="applyFilter('grayscale(100%)')">Preto e Branco</button>
+                    <button class="filter-btn" onclick="applyFilter('contrast(200%)')">Contraste Alto</button>
+                    <button class="filter-btn" onclick="applyFilter('invert(100%)')">Inverter Cores</button>
+                </div>
                 <div class="video-controls" id="videoControls">
                     <button class="control-btn" id="startCameraBtn" onclick="startCamera()" title="Iniciar Câmera">
                         📷
@@ -409,7 +452,9 @@
             ]
         };
 
-        // Conectar ao servidor
+        const filterButtons = document.querySelectorAll('.filter-btn');
+        const remoteVideoEl = document.getElementById('remoteVideo');
+
         function connectToSignalingServer() {
             socket = io(SIGNALING_SERVER);
 
@@ -479,17 +524,14 @@
             });
         }
 
-        // Selecionar modo TV
         function selectTV() {
             currentMode = 'tv';
             document.getElementById('selectionScreen').classList.add('hidden');
             document.getElementById('tvScreen').style.display = 'block';
             
-            // Gerar código aleatório de 4 dígitos
             const pin = Math.floor(1000 + Math.random() * 9000).toString();
             document.getElementById('tvCode').textContent = pin;
             
-            // Conectar e entrar na sala
             if (!socket || !socket.connected) {
                 connectToSignalingServer();
             }
@@ -499,7 +541,6 @@
             }, 500);
         }
 
-        // Selecionar modo Celular
         function selectPhone() {
             currentMode = 'phone';
             document.getElementById('selectionScreen').classList.add('hidden');
@@ -509,13 +550,11 @@
                 connectToSignalingServer();
             }
             
-            // Focar no input
             setTimeout(() => {
                 document.getElementById('phoneCodeInput').focus();
             }, 300);
         }
 
-        // Conectar ao código da TV
         function connectToTV() {
             const pin = document.getElementById('phoneCodeInput').value.trim();
             
@@ -538,19 +577,23 @@
                 console.log('Stream remoto recebido!');
                 const remoteStream = event.streams[0];
                 
-                // Mostrar vídeo na TV
                 if (currentMode === 'tv') {
                     document.getElementById('tvScreen').style.display = 'none';
                     document.getElementById('videoScreen').style.display = 'block';
                     document.getElementById('videoControls').style.display = 'none';
+                    
+                    document.getElementById('filterControls').style.display = 'flex'; 
+                    
                     document.getElementById('remoteVideo').srcObject = remoteStream;
+                    
+                    applyFilter('none');
                 }
             };
+            // ==================================
             
             peerConnection.onconnectionstatechange = () => {
                 console.log('Connection state:', peerConnection.connectionState);
                 
-                // Quando conectado, iniciar câmera automaticamente no celular
                 if (peerConnection.connectionState === 'connected' && currentMode === 'phone' && !localStream) {
                     setTimeout(() => {
                         startCamera();
@@ -577,7 +620,6 @@
             }
         }
 
-        // Iniciar câmera (modo celular)
         async function startCamera() {
             try {
                 localStream = await navigator.mediaDevices.getUserMedia({ 
@@ -591,12 +633,10 @@
                 
                 document.getElementById('localVideo').srcObject = localStream;
                 
-                // Adicionar tracks ao peer connection
                 localStream.getTracks().forEach(track => {
                     peerConnection.addTrack(track, localStream);
                 });
 
-                // Renegociar apenas se for o iniciador ou criar nova oferta
                 if (peerConnection.signalingState === 'stable') {
                     const offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
@@ -615,7 +655,6 @@
             }
         }
 
-        // Parar câmera
         function stopCamera() {
             if (localStream) {
                 localStream.getTracks().forEach(track => track.stop());
@@ -627,7 +666,6 @@
             }
         }
 
-        // Desconectar
         function disconnect() {
             stopCamera();
             
@@ -639,7 +677,6 @@
             goBack();
         }
 
-        // Voltar ao início
         function goBack() {
             stopCamera();
             
@@ -658,6 +695,12 @@
             document.getElementById('phoneScreen').style.display = 'none';
             document.getElementById('videoScreen').style.display = 'none';
             
+            document.getElementById('filterControls').style.display = 'none';
+            
+            if (remoteVideoEl) {
+                remoteVideoEl.style.filter = 'none';
+            }
+            
             document.getElementById('phoneCodeInput').value = '';
             document.getElementById('connectBtn').disabled = false;
             document.getElementById('phoneStatus').classList.add('hidden');
@@ -666,7 +709,6 @@
             currentPin = null;
         }
 
-        // Mostrar status no celular
         function showPhoneStatus(message, isError) {
             const statusEl = document.getElementById('phoneStatus');
             statusEl.textContent = message;
@@ -674,13 +716,11 @@
             statusEl.style.borderLeftColor = isError ? '#f44336' : '#667eea';
         }
 
-        // Permitir Enter no input
         document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('phoneCodeInput').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') connectToTV();
             });
             
-            // Aceitar apenas números
             document.getElementById('phoneCodeInput').addEventListener('input', (e) => {
                 e.target.value = e.target.value.replace(/[^0-9]/g, '');
             });
@@ -689,6 +729,20 @@
         window.addEventListener('beforeunload', () => {
             stopCamera();
         });
+
+        function applyFilter(filterValue) {
+            if (remoteVideoEl) {
+                remoteVideoEl.style.filter = filterValue;
+            }
+            
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                if (btn.getAttribute('onclick') === `applyFilter('${filterValue}')`) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        }
     </script>
 </body>
 </html>
